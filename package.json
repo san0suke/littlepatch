@@ -1,0 +1,22 @@
+{
+  "name": "little-patch",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev -w @patch/server\" \"npm run dev -w @patch/client\"",
+    "build": "npm run build -w @patch/shared && npm run build -w @patch/server && npm run build -w @patch/client",
+    "test": "npm run test -w @patch/shared && npm run test -w @patch/server",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^9.9.0",
+    "globals": "^17.11.0",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.0.0"
+  }
+}

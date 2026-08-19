@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <title>Little Patch</title>
+    <style>
+      /*
+       * As mesmas cores existem em `src/config/theme.ts`, em número, para o
+       * Phaser. Estas aqui valem só para as telas de formulário (login e
+       * chocagem), que são DOM e não canvas — ver o comentário no LoginScene.
+       */
+      :root {
+        --sky: #bfe3f2;
+        --sky-deep: #8ecae0;
+        --grass: #7fbf63;
+        --grass-dark: #4e8a3c;
+        --bark: #4a3728;
+        --cream: #fdf6e3;
+        --ink: #2f3b2c;
+        --muted: #7b8b74;
+        --sun: #f6c453;
+        --bloom: #f2a2c0;
+        --danger: #e5695f;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+        /* Céu com um sol difuso no alto e a grama encostando embaixo. */
+        background:
+          radial-gradient(ellipse at 50% 12%, #ffffff88 0%, transparent 55%),
+          linear-gradient(180deg, var(--sky) 0%, var(--sky-deep) 62%, var(--grass) 100%) var(--sky);
+      }
+
+      /*
+       * O canvas ocupa a área visível de verdade. `height: 100%` resolve contra
+       * o viewport de layout, que no celular é mais alto do que a tela por causa
+       * da barra de endereço — parte do jogo ficava desenhada atrás dela.
+       * `--app-height` vem do visualViewport (services/viewport-height.ts).
+       */
+      #game {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh; /* fallback mais antigo */
+        height: 100dvh; /* Safari 15.4+ / Chrome 108+ */
+        height: var(--app-height, 100dvh);
+      }
+
+      /*
+       * DOM overlay for screens that need real text inputs (native keyboard on
+       * mobile, and later inside Capacitor). It covers the whole viewport rather
+       * than tracking the letterboxed canvas, so anything that must line up with
+       * these controls belongs in here too — not drawn in Phaser. Mixing the two
+       * puts them in different coordinate systems and they overlap once the
+       * canvas gets letterboxed on a phone.
+       */
+      #ui-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        display: none;
+        pointer-events: none;
+        /*
+         * O contêiner de rolagem, e ele precisa ser medido em dvh.
+         *
+         * `inset: 0` (ou 100vh) resolve contra o viewport GRANDE — a altura que
+         * a página teria com a barra do navegador escondida. No celular a barra
+         * está lá de verdade, então a caixa fica mais alta do que o jogador vê,
+         * o conteúdo cabe nessa altura fantasma, o navegador não enxerga nada
+         * para rolar — e o fim do formulário fica atrás da barra, inalcançável.
+         *
+         * dvh acompanha a barra aparecendo e sumindo, então a rolagem é real.
+         */
+        height: 100vh; /* oldest fallback */
+        height: 100dvh; /* Safari 15.4+ / Chrome 108+ */
+        /* Medido do visualViewport — ver services/viewport-height.ts. */
+        height: var(--app-height, 100dvh);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+        overscroll-behavior: contain;
+      }
+      #ui-overlay.active {
+        display: block;
+        pointer-events: auto;
+      }
+
+      /* Cresce com o conteúdo; centraliza enquanto cabe, rola quando não cabe. */
+      .screen {
+        box-sizing: border-box;
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(16px, 5vh, 40px);
+        padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+          max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      }
+
+      .brand {
+        margin: 0;
+        font-family: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
+        font-size: clamp(36px, 11vw, 60px);
+        line-height: 1;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-align: center;
+        color: var(--bark);
+        text-shadow: 0 2px 0 #ffffffaa;
+      }
+      .brand span {
+        color: var(--grass-dark);
+      }
+      .brand::after {
+        content: '';
+        display: block;
+        width: 46%;
+        height: 6px;
+        margin: 12px auto 0;
+        border-radius: 3px;
+        background: linear-gradient(90deg, transparent, var(--grass), var(--grass-dark), var(--grass), transparent);
+      }
+
+      /*
+       * Cartão de papel sobre a grama: borda marcada e sombra curta, no lugar de
+       * degradês pesados. A arte de interface ainda não chegou — quando chegar,
+       * é aqui e nos botões que ela entra (`public/assets/ui/`), e o resto
+       * continua CSS.
+       */
+      .card {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        width: min(360px, 100%);
+        padding: clamp(20px, 5vw, 28px);
+        color: var(--ink);
+        border: 3px solid var(--bark);
+        border-radius: 18px;
+        background: var(--cream);
+        box-shadow: 0 10px 0 #00000018, 0 18px 34px #00000026;
+      }
+
+      .card-title {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .mode-switch {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 2px;
+        border-bottom: 2px solid #00000014;
+      }
+      .mode-btn {
+        flex: 1;
+        padding: 9px 4px 10px;
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--muted);
+        background: none;
+        border: 0;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        cursor: pointer;
+      }
+      .mode-btn[aria-pressed='true'] {
+        color: var(--grass-dark);
+        border-bottom-color: var(--grass-dark);
+      }
+
+      /* Botão de ação: bloco sólido com um lábio embaixo, que afunda ao toque. */
+      .submit-btn {
+        margin-top: 2px;
+        padding: 13px 16px;
+        font-family: inherit;
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        color: #3a2a17;
+        background: var(--sun);
+        border: 3px solid var(--bark);
+        border-radius: 14px;
+        box-shadow: 0 4px 0 var(--bark);
+        cursor: pointer;
+      }
+      .submit-btn:active:not(:disabled) {
+        transform: translateY(3px);
+        box-shadow: 0 1px 0 var(--bark);
+      }
+      .submit-btn:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+
+      .field {
+        position: relative;
+        display: block;
+      }
+      /* `display: block` acima vence o `hidden` do navegador; sem isto o campo
+         de e-mail continuaria visível no modo de login. */
+      .field[hidden] {
+        display: none;
+      }
+      /*
+       * Ícones em SVG embutido, não em arquivo: são quatro glifos simples, ficam
+       * exatamente na cor da madeira sem um PNG por tom, e não somam requisição
+       * nem dependência de licença.
+       */
+      .field::before {
+        content: '';
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        width: 18px;
+        height: 18px;
+        transform: translateY(-50%);
+        background: no-repeat center / contain;
+        opacity: 0.8;
+        pointer-events: none;
+      }
+      .field-user::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a3728' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='3.6'/%3E%3Cpath d='M4.5 20.5c0-3.6 3.4-5.6 7.5-5.6s7.5 2 7.5 5.6'/%3E%3C/svg%3E");
+      }
+      .field-mail::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a3728' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2.5' y='5' width='19' height='14' rx='2'/%3E%3Cpath d='m3.5 7 8.5 6 8.5-6'/%3E%3C/svg%3E");
+      }
+      .field-lock::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a3728' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4.5' y='10' width='15' height='10.5' rx='2'/%3E%3Cpath d='M8 10V7a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E");
+      }
+      .field-tag::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a3728' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12V4.5h7.5L21 15l-7.5 7.5L3 12Z'/%3E%3Ccircle cx='7.5' cy='8' r='1.2'/%3E%3C/svg%3E");
+      }
+
+      .card input {
+        box-sizing: border-box;
+        display: block;
+        width: 100%;
+        padding: 12px 14px 12px 42px;
+        /* 16px keeps iOS Safari from zooming in when a field takes focus. */
+        font-size: 16px;
+        font-family: inherit;
+        color: var(--ink);
+        background: #fffdf6;
+        border: 2px solid #00000022;
+        border-radius: 10px;
+        transition: border-color 120ms, box-shadow 120ms;
+      }
+      .card input::placeholder {
+        color: var(--muted);
+      }
+      .card input:focus {
+        outline: none;
+        border-color: var(--grass-dark);
+        box-shadow: 0 0 0 3px #4e8a3c33;
+      }
+      /* Marcado pelas cenas quando o servidor recusa o envio. */
+      .card input.has-error {
+        border-color: var(--danger);
+        box-shadow: 0 0 0 3px #e5695f33;
+      }
+
+      /*
+       * Escolha do ovo: três cartões lado a lado, cada um na cor da espécie
+       * (`shared/pet/species.ts`). O input de rádio some, mas continua sendo ele
+       * quem guarda a escolha — é o que dá navegação por teclado e leitura de
+       * tela de graça.
+       */
+      .species-list {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .species {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 10px 6px;
+        text-align: center;
+        border: 2px solid #00000018;
+        border-radius: 12px;
+        background: #fffdf6;
+        cursor: pointer;
+      }
+      .species input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .species-egg {
+        width: 34px;
+        height: 42px;
+        border-radius: 50% 50% 48% 48% / 62% 62% 38% 38%;
+        background: radial-gradient(circle at 35% 30%, #ffffff, var(--species, #7fbf63));
+        border: 2px solid var(--bark);
+      }
+      .species-name {
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .species-note {
+        font-size: 10px;
+        line-height: 1.25;
+        color: var(--muted);
+      }
+      .species:has(input:checked) {
+        border-color: var(--grass-dark);
+        box-shadow: 0 0 0 3px #4e8a3c2e;
+      }
+      /* Sem `:has` (navegador antigo), o foco ainda mostra qual está escolhido. */
+      .species input:focus-visible + .species-egg {
+        box-shadow: 0 0 0 3px #4e8a3c66;
+      }
+
+      .form-error {
+        margin: -8px 0 0;
+        min-height: 17px;
+        font-size: 13px;
+        text-align: center;
+        color: var(--danger);
+      }
+
+      /* Celular deitado e teclado aberto: encolhe o título para o formulário caber. */
+      @media (max-height: 480px) {
+        .brand {
+          font-size: clamp(26px, 7vh, 38px);
+        }
+        .screen {
+          gap: 12px;
+          padding-top: 12px;
+          padding-bottom: 12px;
+        }
+        .card {
+          gap: 8px;
+          padding: 14px;
+        }
+      }
+
+      /*
+       * Celular deitado: em coluna a logo empurra o formulário para fora da tela
+       * e o jogador tem que rolar para chegar no botão. Lado a lado, a altura
+       * passa a ser a do formulário sozinho, que cabe inteiro, e a largura que
+       * sobra na paisagem — inútil numa coluna centralizada — vira o espaço da
+       * logo. Os alvos de toque continuam do mesmo tamanho.
+       */
+      @media (orientation: landscape) and (max-height: 560px) {
+        .screen {
+          flex-direction: row;
+          justify-content: center;
+          align-items: center;
+          gap: clamp(16px, 5vw, 48px);
+        }
+        .brand {
+          flex: 0 1 auto;
+          font-size: clamp(30px, 9vw, 60px);
+        }
+        .card {
+          flex: 0 0 auto;
+          width: min(360px, 55vw);
+        }
+      }
+
+      /*
+       * Celular em pé com o teclado aberto: o título é a diferença entre o
+       * formulário caber e o jogador ter que rolar até o botão. Os campos se
+       * explicam sozinhos, então a logo sai — só ela, porque encolher o
+       * formulário espremeria os campos debaixo do dedo de quem vai digitar.
+       *
+       * `short-viewport` vem do JS (`services/viewport-height.ts`), e não de um
+       * `@media (max-height: ...)`, porque a media query resolve contra o
+       * viewport de layout: no iOS ele não encolhe quando o teclado abre, então
+       * a regra nunca valia justamente no caso que ela existia para resolver.
+       */
+      @media (orientation: portrait) {
+        .short-viewport .brand {
+          display: none;
+        }
+      }
+
+      /*
+       * Com um campo em foco a logo sai em qualquer orientação. Deitada ela não
+       * rouba altura, mas rouba largura: fica ao lado e espreme o formulário
+       * justamente enquanto o teclado cobre o resto da tela. `keyboard-open` vem
+       * do foco (`scenes/LoginScene.ts`) — é a causa do teclado subir, e o único
+       * sinal que serve nos dois sistemas.
+       */
+      .short-viewport.keyboard-open .brand {
+        display: none;
+      }
+      .short-viewport.keyboard-open .card {
+        width: min(360px, 100%);
+      }
+
+      @media (max-height: 320px) {
+        .brand {
+          display: none;
+        }
+        .card {
+          width: min(360px, 100%);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="ui-overlay"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

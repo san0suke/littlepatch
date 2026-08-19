@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  /// Moeda do jogo. Comida e remédio custam; brincar e dar banho rendem.
+  coins        BigInt   @default(200)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  pet   Pet?
+  cheers Cheer[] @relation("CheerSender")
+}
+
+/// Um bicho por conta, por enquanto — daí o `@unique` no dono.
+model Pet {
+  id      String @id @default(uuid())
+  ownerId String @unique
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  name    String
+  species String
+
+  /// Nascimento. É a única data absoluta do bicho, e ela nunca sai do servidor:
+  /// para o cliente vai `ageMs`, uma duração (ver `shared/socket/payloads.ts`).
+  bornAt  DateTime @default(now())
+
+  /// Medidores, inteiros de 0 a 100. Colunas separadas em vez de um Json: são
+  /// cinco números fixos, e assim dá para ordenar e consultar por eles depois
+  /// (ranking de bichos mais bem cuidados, por exemplo).
+  satiety Int @default(70)
+  energy  Int @default(80)
+  hygiene Int @default(90)
+  joy     Int @default(75)
+  health  Int @default(100)
+
+  asleep  Boolean @default(false)
+
+  /// Até onde a simulação de decaimento já foi aplicada. É o que faz o bicho
+  /// viver com o jogo fechado: ao ler, o servidor avança daqui até agora.
+  simulatedAt DateTime @default(now())
+
+  /// Última vez de cada ação, para as esperas. Colunas explícitas pelo mesmo
+  /// motivo dos medidores — são poucas e conhecidas.
+  lastFedAt     DateTime?
+  lastPlayedAt  DateTime?
+  lastCleanedAt DateTime?
+  lastHealedAt  DateTime?
+  lastSleptAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cheers Cheer[]
+}
+
+/// Mimo de um jogador no bicho de outro. Guardado para a espera valer por par
+/// (jogador, bicho) e sobreviver a um restart do servidor.
+model Cheer {
+  id       String   @id @default(uuid())
+  petId    String
+  pet      Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  senderId String
+  sender   User     @relation("CheerSender", fields: [senderId], references: [id], onDelete: Cascade)
+  sentAt   DateTime @default(now())
+
+  @@unique([petId, senderId])
+}

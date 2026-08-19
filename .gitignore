@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+.env
+*.log
+.DS_Store
+packages/server/prisma/generated/
+
+# Áudio: trilhas e efeitos vêm de pacotes licenciados para uso em projetos, não
+# para redistribuição, e os originais são grandes. Ficam locais; o README da
+# pasta explica de onde vêm e como converter.
+#
+# `pet/`, `room/` e `ui/` NÃO entram aqui: são a arte do jogo, poucos KB cada.
+# Versionadas, um clone novo já abre com o bicho desenhado no lugar.
+packages/client/public/assets/audio/*
+!packages/client/public/assets/audio/.gitkeep
