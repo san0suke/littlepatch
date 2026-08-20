@@ -199,6 +199,13 @@ quando a textura não existe, `ui/backdrop.ts` faz o mesmo com o cenário e
 `config/assets.ts` é o manifesto: acrescentar uma imagem é colocar o arquivo em
 `public/assets/` e escrever uma linha lá.
 
+A barra de carregamento é a única peça de fora: o `progress_white` do UI Pack —
+Adventure do Kenney, em CC0 (pode ir para o repositório, não exige atribuição — a
+damos no README dos assets). Uma peça só serve de trilho e de preenchimento, cada
+um com o seu `tint`, e ela é desenhada em nine-slice para as pontas arredondadas
+não derreterem ao esticar. Trocar a cor da barra é trocar um número em
+`ui/progress-bar.ts`.
+
 A fonte do canvas é uma só (`config/theme.ts`, `FONT_STACK`): o padrão do Phaser é
 `Courier`, e sem apontar a fonte em cada estilo o jogo trocava de letra entre as
 telas de canvas e as de DOM.

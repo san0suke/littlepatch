@@ -37,6 +37,14 @@ export interface CurvedText {
   width: number;
   /** Altura de uma letra. A do container inclui a curva; esta, não. */
   lineHeight: number;
+  /**
+   * Refaz a curva com outra queda, sem recriar as letras.
+   *
+   * Serve para compensar uma escala aplicada depois: encolher o container
+   * encolhe a curva junto, mas a superfície onde a linha se apoia continua do
+   * mesmo tamanho — então a queda tem que ser dividida pela escala.
+   */
+  setSag(sag: number): void;
 }
 
 export function createCurvedText(scene: Phaser.Scene, config: CurvedTextConfig): CurvedText {
@@ -52,35 +60,37 @@ export function createCurvedText(scene: Phaser.Scene, config: CurvedTextConfig):
   // Queda em u = 0 vale `sag`; daí sai o coeficiente da parábola, e a mesma
   // conta dá a queda em qualquer ponto — inclusive à direita do topo, onde a
   // distância até ele é menor e a queda, proporcionalmente, também.
-  const drop = (u: number): number => sag * ((u - apex) / apex) ** 2;
+  const drop = (u: number, currentSag: number): number => currentSag * ((u - apex) / apex) ** 2;
   // Inclinação da letra: a derivada da curva no ponto, em radianos.
-  const slope = (u: number): number => Math.atan2((2 * sag * (u - apex)) / apex ** 2, width);
-
-  let cursor = 0;
-  let top = Infinity;
-  let bottom = -Infinity;
-
-  letters.forEach((letter, index) => {
-    const center = cursor + widths[index] / 2;
-    cursor += widths[index];
-
-    const u = width > 0 ? center / width : 0;
-    const y = drop(u);
-    letter.setPosition(center, y);
-    letter.setRotation(slope(u));
-
-    top = Math.min(top, y - letter.height / 2);
-    bottom = Math.max(bottom, y + letter.height / 2);
-  });
-
-  // Só na horizontal: na vertical o zero já é o ponto mais alto da curva, que é
-  // onde quem chama quer encostar a linha.
-  for (const letter of letters) {
-    letter.setX(letter.x - width / 2);
-  }
+  const slope = (u: number, currentSag: number): number =>
+    Math.atan2((2 * currentSag * (u - apex)) / apex ** 2, width);
 
   const container = scene.add.container(0, 0, letters);
-  container.setSize(width, bottom - top);
 
-  return { container, width, lineHeight };
+  const place = (currentSag: number): void => {
+    let cursor = 0;
+    let top = Infinity;
+    let bottom = -Infinity;
+
+    letters.forEach((letter, index) => {
+      const center = cursor + widths[index] / 2;
+      cursor += widths[index];
+
+      const u = width > 0 ? center / width : 0;
+      const y = drop(u, currentSag);
+      // Só o x é deslocado para o meio: na vertical o zero já é o ponto mais
+      // alto da curva, que é onde quem chama quer encostar a linha.
+      letter.setPosition(center - width / 2, y);
+      letter.setRotation(slope(u, currentSag));
+
+      top = Math.min(top, y - letter.height / 2);
+      bottom = Math.max(bottom, y + letter.height / 2);
+    });
+
+    container.setSize(width, bottom - top);
+  };
+
+  place(sag);
+
+  return { container, width, lineHeight, setSag: place };
 }

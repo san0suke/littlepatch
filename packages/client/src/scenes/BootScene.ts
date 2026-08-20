@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
-import { PET_SPECIES_LIST } from '@patch/shared';
 import { IMAGE_ASSETS } from '../config/assets.js';
 import { CSS_COLORS, FONT_STACK } from '../config/theme.js';
 import { getToken } from '../services/auth-storage.js';
 import { drawBackdrop } from '../ui/backdrop.js';
 import { createBrand, TAGLINE } from '../ui/brand.js';
+import { drawIcon, type IconName } from '../ui/icon.js';
 import { dp, px, readLayout, space, type Layout } from '../ui/layout.js';
-import { createPetSprite } from '../ui/pet-sprite.js';
+import { createProgressBar, type ProgressBar } from '../ui/progress-bar.js';
 
 /**
  * A tela de carregamento: a primeira coisa que o jogo mostra.
@@ -43,7 +43,14 @@ const TIPS = [
   'Remédio custa caro: banho e comida em dia evitam a doença.',
 ];
 
-const BADGES = ['Multiplayer', 'Cooperativo', 'Relaxante'];
+const BADGES: { label: string; icon: IconName; color: number; detail: number }[] = [
+  { label: 'Multiplayer', icon: 'people', color: 0xf6c453, detail: 0xf2a2c0 },
+  { label: 'Cooperativo', icon: 'heart', color: 0xe5695f, detail: 0xffffff },
+  { label: 'Relaxante', icon: 'leaf', color: 0x8ed36a, detail: 0x4e8a3c },
+];
+
+/** Texto do rodape: claro, sobre o escurecido - nunca a tinta escura do jogo. */
+const LIGHT = '#fdf6e3';
 
 export class BootScene extends Phaser.Scene {
   private layout!: Layout;
@@ -54,8 +61,7 @@ export class BootScene extends Phaser.Scene {
   private leaving = false;
   private tip = TIPS[Math.floor(Math.random() * TIPS.length)];
 
-  private bar: { x: number; y: number; width: number; height: number } | null = null;
-  private barFill: Phaser.GameObjects.Graphics | null = null;
+  private bar: ProgressBar | null = null;
   private percentText: Phaser.GameObjects.Text | null = null;
 
   constructor() {
@@ -147,226 +153,203 @@ export class BootScene extends Phaser.Scene {
    * Monta a tela do zero.
    *
    * De baixo para cima: os selos, a dica, a barra e o aviso de carregamento. O
-   * que sobra de altura fica para a logo e para os bichos — e se não sobrar nada,
-   * eles saem de cena em vez de espremer o resto. É o mesmo princípio das outras
-   * telas: nada de resolução de projeto, cada peça pede o espaço que tem.
+   * que sobra de altura fica para a marca e para a pintura do fundo aparecer. É
+   * o mesmo princípio das outras telas: nada de resolução de projeto, cada peça
+   * pede o espaço que tem.
    */
   private build(): void {
     this.children.removeAll(true);
     this.bar = null;
-    this.barFill = null;
     this.percentText = null;
 
     const l = this.layout;
-    const { groundTop } = drawBackdrop(this, l);
+    drawBackdrop(this, l);
 
-    // A placa nasce antes do que vai em cima dela: quem entra primeiro na cena
-    // fica atrás. Só dá para desenhá-la depois de medir o bloco inteiro.
-    const panel = this.add.graphics();
+    // O escurecido nasce antes do que vai em cima dele: quem entra primeiro na
+    // cena fica atrás. Só dá para desenhá-lo depois de medir o bloco inteiro.
+    const scrim = this.add.graphics();
 
     let bottom = l.height - l.padBottom;
     bottom = this.buildBadges(bottom);
-    const blockBottom = bottom;
     bottom = this.buildTip(bottom);
     bottom = this.buildBar(bottom);
-    this.drawPanel(panel, bottom, blockBottom);
+    this.drawScrim(scrim, bottom - space(l, 12, 9));
 
-    const brand = createBrand(this, l, {
+    createBrand(this, l, {
       x: l.width / 2,
       y: l.padTop + space(l, 10, 6),
       width: Math.min(l.width - l.padX * 2, dp(l, l.short ? 300 : 460)),
       tagline: l.short ? undefined : TAGLINE,
     });
 
-    // Os bichos ficam no chão, entre a logo e a barra — e só se couberem de pé.
-    const freeTop = brand.y + brand.height;
-    const freeBottom = bottom - space(l, 14, 10);
-    if (freeBottom - freeTop > dp(l, 64)) {
-      this.buildPets(Math.max(freeTop, Math.min(groundTop, freeBottom - dp(l, 20))), {
-        top: freeTop,
-        bottom: freeBottom,
-      });
-    }
-
     this.drawProgress();
   }
 
   /**
-   * A placa de papel atrás do aviso, da barra e da dica.
+   * O escurecido do rodapé.
    *
-   * O fundo é uma pintura, com chão de pedra claro e mato escuro na mesma faixa
-   * onde o texto cai: sem a placa, metade da frase some. Um contorno no texto
-   * resolveria em cima do chão e falharia em cima do mato — a placa resolve em
-   * cima de qualquer fundo, inclusive o que vier depois.
+   * A placa de papel que havia aqui antes resolvia a leitura, mas colava um
+   * retângulo claro por cima da pintura, e o rodapé parecia um aviso de sistema.
+   * Escurecer o fundo em degradê deixa a arte aparecer, e o texto claro por cima
+   * lê em qualquer parte dela — chão de pedra, mato ou céu.
+   *
+   * Em faixas, e não em `fillGradientStyle`: o degradê do Phaser é só do WebGL, e
+   * no renderizador Canvas a mesma chamada pintaria uma tarja chapada. Mesma
+   * razão do céu em `ui/backdrop.ts`.
    */
-  private drawPanel(panel: Phaser.GameObjects.Graphics, top: number, bottom: number): void {
+  private drawScrim(scrim: Phaser.GameObjects.Graphics, top: number): void {
     const l = this.layout;
-    const padX = space(l, 12, 10);
-    const padY = space(l, 10, 8);
-    const left = l.padX - padX;
+    const fade = Math.max(dp(l, 40), (l.height - top) * 0.55);
+    const layers = 16;
+    const alpha = 0.062;
 
-    panel.fillStyle(0xfdf6e3, 0.82);
-    panel.fillRoundedRect(
-      left,
-      top - padY,
-      l.width - left * 2,
-      bottom - top + padY * 2,
-      dp(l, 18),
-    );
-  }
-
-  /** Os três bichos parados na grama, do tamanho que o espaço permitir. */
-  private buildPets(groundLine: number, free: { top: number; bottom: number }): void {
-    const l = this.layout;
-    const columns = PET_SPECIES_LIST.length;
-    const slot = (l.width - l.padX * 2) / columns;
-    const size = Math.min(slot * 0.62, free.bottom - free.top, dp(l, 104));
-
-    PET_SPECIES_LIST.forEach((species, index) => {
-      createPetSprite(this, l, {
-        x: l.padX + slot * (index + 0.5),
-        // O `createPetSprite` centra o bicho no y pedido; subir meio corpo é o
-        // que faz ele parecer apoiado no chão, e não boiando sobre a grama.
-        y: Math.min(groundLine, free.bottom - size / 2),
-        species: species.id,
-        stage: 'child',
-        size,
-      });
-    });
+    // Camadas empilhadas, cada uma indo até a base da tela: onde há mais delas
+    // por cima, mais escuro fica. Faixas lado a lado deixariam a emenda à mostra
+    // como uma listra; assim o acúmulo é contínuo e some sozinho no alto.
+    for (let i = 0; i < layers; i += 1) {
+      const y = top - fade + (fade * i) / layers;
+      scrim.fillStyle(0x1b2a16, alpha);
+      scrim.fillRect(0, y, l.width, l.height - y);
+    }
   }
 
   /** A barra e o "Carregando…". Devolve o topo do bloco. */
   private buildBar(bottom: number): number {
     const l = this.layout;
     const width = Math.min(l.width - l.padX * 2, dp(l, 520));
-    const height = Math.max(dp(l, 18), Math.round(l.height * 0.022));
+    const height = Math.max(dp(l, 26), Math.round(l.height * 0.03));
     const x = Math.round((l.width - width) / 2);
     const y = Math.round(bottom - height);
 
-    const track = this.add.graphics();
-    track.fillStyle(0xfdf6e3, 0.95);
-    track.fillRoundedRect(x, y, width, height, height / 2);
-    track.lineStyle(dp(l, 2), 0x4a3728, 0.55);
-    track.strokeRoundedRect(x, y, width, height, height / 2);
-
-    this.bar = { x, y, width, height };
-    this.barFill = this.add.graphics();
+    this.bar = createProgressBar(this, l, { x, y, width, height });
 
     this.percentText = this.add
       .text(l.width / 2, y + height / 2, '', {
         fontFamily: FONT_STACK,
-        fontSize: `${px(l, 12, 10)}px`,
-        color: '#3a2a17',
+        fontSize: `${px(l, 15, 12)}px`,
+        color: '#ffffff',
         fontStyle: 'bold',
       })
       .setOrigin(0.5);
+    this.percentText.setShadow(0, dp(l, 2), 'rgba(0, 0, 0, 0.55)', dp(l, 2), false, true);
 
     const status = this.add
-      .text(l.width / 2, y - space(l, 8, 6), 'Carregando seu mundo fofinho…', {
+      .text(l.width / 2, y - space(l, 10, 7), 'Carregando seu mundo fofinho…', {
         fontFamily: FONT_STACK,
-        fontSize: `${px(l, 15, 12)}px`,
-        color: CSS_COLORS.ink,
+        fontSize: `${px(l, 17, 13)}px`,
+        color: LIGHT,
         align: 'center',
         wordWrap: { width: l.width - l.padX * 2 },
       })
       .setOrigin(0.5, 1);
+    status.setShadow(0, dp(l, 2), 'rgba(0, 0, 0, 0.6)', dp(l, 3), false, true);
 
     return status.y - status.height;
   }
 
-  /** A dica do dia. Devolve o topo da linha. */
+  /**
+   * A dica do dia: uma folhinha, "Dica:" em dourado e o resto em claro.
+   *
+   * São três objetos numa linha, e não um texto único, porque a palavra "Dica:"
+   * tem cor própria — um `Text` do Phaser pinta tudo de uma cor só. O bloco é
+   * medido depois de montado e centralizado então.
+   */
   private buildTip(bottom: number): number {
     const l = this.layout;
     if (l.short) {
       return bottom; // Em tela baixa a barra vale mais do que a dica.
     }
 
-    const text = this.add
-      .text(l.width / 2, bottom, `Dica: ${this.tip}`, {
-        fontFamily: FONT_STACK,
-        fontSize: `${px(l, 13, 11)}px`,
-        color: CSS_COLORS.ink,
-        align: 'center',
-        wordWrap: { width: Math.min(l.width - l.padX * 2, dp(l, 520)) },
-      })
-      .setOrigin(0.5, 1);
+    const fontSize = px(l, 14, 11);
+    const iconSize = Math.round(fontSize * 1.2);
+    const gap = space(l, 6, 4);
 
-    return text.y - text.height - space(l, 10, 8);
+    const label = this.add.text(0, 0, 'Dica:', {
+      fontFamily: FONT_STACK,
+      fontSize: `${fontSize}px`,
+      color: CSS_COLORS.sun,
+      fontStyle: 'bold',
+    });
+
+    const maxWidth = Math.min(l.width - l.padX * 2, dp(l, 560));
+    const text = this.add.text(0, 0, this.tip, {
+      fontFamily: FONT_STACK,
+      fontSize: `${fontSize}px`,
+      color: LIGHT,
+      wordWrap: { width: maxWidth - iconSize - label.width - gap * 2 },
+    });
+
+    for (const part of [label, text]) {
+      part.setShadow(0, dp(l, 2), 'rgba(0, 0, 0, 0.6)', dp(l, 3), false, true);
+    }
+
+    const blockWidth = iconSize + gap + label.width + gap + text.width;
+    const left = Math.round((l.width - blockWidth) / 2);
+    const top = Math.round(bottom - text.height);
+
+    const leaf = this.add.graphics().setPosition(left + iconSize / 2, top + label.height / 2);
+    drawIcon(leaf, 'leaf', iconSize, { fill: 0x8ed36a, detail: 0x4e8a3c });
+
+    label.setPosition(left + iconSize + gap, top);
+    text.setPosition(label.x + label.width + gap, top);
+
+    return top - space(l, 12, 9);
   }
 
   /**
-   * Os selos do rodapé. Devolve o topo da fila — ou o mesmo `bottom`, quando não
-   * cabem: numa tela estreita eles seriam a primeira coisa a atropelar a dica, e
-   * são o que menos faz falta.
+   * Os selos do rodapé: ícone e palavra, espalhados na largura.
+   *
+   * Devolve o topo da fila — ou o mesmo `bottom`, quando não cabem: numa tela
+   * estreita eles seriam a primeira coisa a atropelar a dica, e são o que menos
+   * faz falta.
    */
   private buildBadges(bottom: number): number {
     const l = this.layout;
-    const gap = space(l, 8, 6);
-    const padX = space(l, 10, 8);
-    const padY = space(l, 5, 4);
+    const fontSize = px(l, 13, 10);
+    const iconSize = Math.round(fontSize * 1.5);
+    const gap = space(l, 7, 5);
 
-    // As placas nascem antes dos rótulos, ainda vazias: quem entra na cena
-    // primeiro fica atrás. O desenho só acontece depois de medir os textos.
-    const pills = this.add.graphics();
-    const labels = BADGES.map((label) =>
-      this.add
-        .text(0, 0, label, {
-          fontFamily: FONT_STACK,
-          fontSize: `${px(l, 12, 10)}px`,
-          color: CSS_COLORS.ink,
-          fontStyle: 'bold',
-        })
-        .setOrigin(0.5),
+    const labels = BADGES.map((badge) =>
+      this.add.text(0, 0, badge.label, {
+        fontFamily: FONT_STACK,
+        fontSize: `${fontSize}px`,
+        color: LIGHT,
+        fontStyle: 'bold',
+      }),
     );
 
-    const widths = labels.map((label) => label.width + padX * 2);
-    const total = widths.reduce((sum, w) => sum + w, 0) + gap * (labels.length - 1);
+    const widths = labels.map((label) => iconSize + gap + label.width);
+    const total = widths.reduce((sum, w) => sum + w, 0);
+    const available = Math.min(l.width - l.padX * 2, dp(l, 560));
 
-    if (total > l.width - l.padX * 2) {
+    if (total + space(l, 14, 10) * (labels.length - 1) > available) {
       labels.forEach((label) => label.destroy());
-      pills.destroy();
       return bottom;
     }
 
-    const height = labels[0].height + padY * 2;
+    // O que sobra de largura vira o espaço entre um selo e outro, por igual.
+    const spacing = (available - total) / (labels.length - 1);
+    const height = Math.max(iconSize, labels[0].height);
     const top = bottom - height;
-    let x = (l.width - total) / 2;
+    let x = Math.round((l.width - available) / 2);
 
-    pills.fillStyle(0xfdf6e3, 0.82);
     labels.forEach((label, index) => {
-      const width = widths[index];
-      pills.fillRoundedRect(x, top, width, height, height / 2);
-      label.setPosition(x + width / 2, top + height / 2);
-      x += width + gap;
+      const badge = BADGES[index];
+      const icon = this.add.graphics().setPosition(x + iconSize / 2, top + height / 2);
+      drawIcon(icon, badge.icon, iconSize, { fill: badge.color, detail: badge.detail });
+
+      label.setPosition(x + iconSize + gap, Math.round(top + (height - label.height) / 2));
+      label.setShadow(0, dp(l, 2), 'rgba(0, 0, 0, 0.6)', dp(l, 3), false, true);
+
+      x += widths[index] + spacing;
     });
 
-    return top - space(l, 10, 8);
+    return top - space(l, 12, 9);
   }
 
   /** Redesenha só o que muda: o preenchimento da barra e o número. */
   private drawProgress(): void {
-    if (!this.bar || !this.barFill) {
-      return;
-    }
-
-    const { x, y, width, height } = this.bar;
-    const inset = dp(this.layout, 3);
-    const filled = Math.max(0, (width - inset * 2) * this.shown);
-
-    this.barFill.clear();
-    if (filled > 0) {
-      this.barFill.fillStyle(0x4e8a3c, 1);
-      this.barFill.fillRoundedRect(
-        x + inset,
-        y + inset,
-        // Um preenchimento mais estreito do que o próprio raio vira um losango
-        // torto: abaixo disso ele volta a ser um retângulo comum.
-        filled,
-        height - inset * 2,
-        Math.min((height - inset * 2) / 2, filled / 2),
-      );
-    }
-
+    this.bar?.set(this.shown);
     this.percentText?.setText(`${Math.round(this.shown * 100)}%`);
   }
 }

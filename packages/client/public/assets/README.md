@@ -30,6 +30,7 @@ provisório enquanto a resposta for não.
 | -------------------- | ------------------ | ------------ |
 | `logo.webp`          | `ui-logo`          | Carregamento, menu e — por `<img>` — login e chocagem |
 | `plank.webp`         | `ui-plank`         | A tábua com a frase do jogo, embaixo do letreiro |
+| `bar-fill.png`       | `ui-bar-fill`      | A barra de carregamento (nine-slice, serve de trilho e de preenchimento) |
 | `backdrop.webp`      | `ui-backdrop`      | Fundo da tela de carregamento |
 | `menu-backdrop.webp` | `ui-menu-backdrop` | Fundo do menu inicial |
 
@@ -102,7 +103,22 @@ O `.ogg` cobre Chrome, Firefox e Android; o `.mp3` é o fallback do Safari. Nome
 com espaço e maiúscula viram URL no navegador — renomeie para minúsculas com
 hífen ao converter.
 
+## `ui/bar-fill.png` — de onde veio
+
+É o `progress_white` do **UI Pack — Adventure**, do [Kenney](https://kenney.nl),
+em **CC0**: uso livre, inclusive comercial, sem exigência de atribuição. Foi
+rasterizado do SVG do pacote em 4× (64×128) para não borrar em tela de densidade
+3, e é usado em nine-slice — os cantos ficam do tamanho original e só o miolo
+estica, senão as pontas arredondadas derreteriam ao esticar para a largura da
+tela.
+
+A peça é quase branca de propósito: a cor sai do `tint` em `src/ui/progress-bar.ts`
+— um número para o trilho, outro para o preenchimento.
+
 ## Créditos
 
 A lista precisa existir antes do lançamento, mesmo para licenças que não exigem
-atribuição. Preencher conforme a arte for entrando.
+atribuição.
+
+- **Kenney** (<https://kenney.nl>) — UI Pack: Adventure, CC0. Barra de
+  carregamento (`ui/bar-fill.png`).

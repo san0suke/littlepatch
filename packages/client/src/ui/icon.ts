@@ -14,7 +14,7 @@ import Phaser from 'phaser';
  * Quando a arte de interface chegar, é aqui que ela entra (uma imagem por nome,
  * via `config/assets.ts`); os itens de menu não mudam.
  */
-export type IconName = 'leaf' | 'house' | 'pet' | 'bag' | 'star' | 'gear';
+export type IconName = 'leaf' | 'house' | 'pet' | 'bag' | 'star' | 'gear' | 'heart' | 'people';
 
 export interface IconPalette {
   fill: number;
@@ -48,7 +48,45 @@ export function drawIcon(
     case 'gear':
       drawGear(g, r, palette);
       return;
+    case 'heart':
+      drawHeart(g, r, palette);
+      return;
+    case 'people':
+      drawPeople(g, r, palette);
+      return;
   }
+}
+
+/** Coração: dois lóbulos e um triângulo, o desenho de sempre. */
+function drawHeart(g: Phaser.GameObjects.Graphics, r: number, palette: IconPalette): void {
+  g.fillStyle(palette.fill, 1);
+  g.fillCircle(-r * 0.42, -r * 0.28, r * 0.52);
+  g.fillCircle(r * 0.42, -r * 0.28, r * 0.52);
+  g.fillTriangle(-r * 0.9, -r * 0.12, r * 0.9, -r * 0.12, 0, r * 0.92);
+
+  // Brilho: um respingo claro em cima do lóbulo esquerdo.
+  g.fillStyle(palette.detail, 0.55);
+  g.fillEllipse(-r * 0.45, -r * 0.42, r * 0.3, r * 0.18);
+}
+
+/** Duas pessoas lado a lado: cabeça redonda e um tronco de ombros arredondados. */
+function drawPeople(g: Phaser.GameObjects.Graphics, r: number, palette: IconPalette): void {
+  const person = (x: number, scale: number, color: number): void => {
+    const head = r * 0.3 * scale;
+    g.fillStyle(color, 1);
+    g.fillCircle(x, -r * 0.42 * scale, head);
+    // Tronco arredondado só em cima: é o que lê como ombro. Dois círculos
+    // soltos, que era o desenho anterior, viravam quatro bolinhas na tela.
+    g.fillRoundedRect(x - head * 1.15, -r * 0.02 * scale, head * 2.3, r * 0.72 * scale, {
+      tl: head,
+      tr: head,
+      bl: head * 0.35,
+      br: head * 0.35,
+    });
+  };
+
+  person(-r * 0.38, 0.9, palette.detail);
+  person(r * 0.36, 1, palette.fill);
 }
 
 /** Folha: duas curvas espelhadas de ponta a ponta, e a nervura no meio. */

@@ -33,6 +33,15 @@ export const MENU_BACKDROP_TEXTURE = 'ui-menu-backdrop';
 /** A tábua onde a frase do jogo é escrita, embaixo do letreiro. */
 export const PLANK_TEXTURE = 'ui-plank';
 
+/**
+ * A peça da barra de carregamento, em nine-slice (`ui/progress-bar.ts`). Vem do
+ * "UI Pack — Adventure" do Kenney, CC0 — ver o README de `public/assets/`.
+ *
+ * Uma peça só: o trilho é ela mesma, escurecida pelo `tint`. O sprite de trilho
+ * do pacote é preto translúcido e sumia sobre o escurecido do rodapé.
+ */
+export const BAR_FILL_TEXTURE = 'ui-bar-fill';
+
 /** Chave da textura de um bicho, por espécie e estágio de vida. */
 export function petTextureKey(species: PetSpeciesId, stage: PetStage): string {
   return `pet-${species}-${stage}`;
@@ -75,6 +84,9 @@ export const IMAGE_ASSETS: ImageAsset[] = [
   { key: BACKDROP_TEXTURE, url: 'assets/ui/backdrop.webp' },
   { key: MENU_BACKDROP_TEXTURE, url: 'assets/ui/menu-backdrop.webp' },
   { key: PLANK_TEXTURE, url: 'assets/ui/plank.webp' },
+  // PNG, e não webp: é um sprite de 64×128, onde a compressão não economiza nada
+  // e a perda apareceria justo na borda que o nine-slice repete.
+  { key: BAR_FILL_TEXTURE, url: 'assets/ui/bar-fill.png' },
   // ...expectedPetImages(),
   // { key: 'room-day', url: 'assets/room/day.png' },
   // { key: 'room-night', url: 'assets/room/night.png' },

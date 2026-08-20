@@ -38,6 +38,16 @@ export const TAGLINE = 'Sua fazendinha. Seus bichinhos. Juntos.';
 const LOGO_RATIO = 400 / 1200;
 
 /**
+ * Onde a barra de madeira do letreiro termina, em fração da altura da arte —
+ * medido na imagem. Os 12% de baixo são folha e florzinha, que descem soltas.
+ *
+ * É por isso que a tábua não é encostada na base da imagem: ali embaixo não há
+ * letreiro nenhum, e a frase pareceria largada longe. Ela sobe até um pouco acima
+ * da barra e entra por baixo dela.
+ */
+const LOGO_BAR_BOTTOM = 0.882;
+
+/**
  * Onde cabe texto dentro da tábua, em fração do tamanho dela.
  *
  * A arte tem folhas nas duas pontas e a madeira é curva: escrever de ponta a
@@ -92,8 +102,12 @@ export function createBrand(
   let plate: Phaser.GameObjects.Container | null = null;
 
   if (tagline) {
-    plate = createTagline(scene, layout, tagline, width, mark.height + space(layout, 10, 7));
-    parts.push(plate);
+    // Sobreposição, e não espaço: a tábua encosta no letreiro e entra alguns
+    // pixels por baixo dele, como uma placa pregada logo abaixo da tabuleta. Por
+    // isso ela também entra **antes** na lista — dentro de um container, quem vem
+    // primeiro é desenhado atrás.
+    plate = createTagline(scene, layout, tagline, width, mark.taglineTop);
+    parts.unshift(plate);
     blockWidth = Math.max(blockWidth, plate.width);
     blockHeight = plate.y + plate.height;
   }
@@ -131,11 +145,16 @@ function engrave(
 }
 
 /** O letreiro desenhado, na largura pedida. */
-function createLogo(scene: Phaser.Scene, width: number): { object: Phaser.GameObjects.Image; height: number } {
+function createLogo(
+  scene: Phaser.Scene,
+  width: number,
+): { object: Phaser.GameObjects.Image; height: number; taglineTop: number } {
   const image = scene.add.image(0, 0, LOGO_TEXTURE).setOrigin(0, 0);
   const height = Math.round(width * (image.height / image.width));
   image.setDisplaySize(width, height);
-  return { object: image, height };
+  // Três por cento acima do fim da barra: o bastante para a tábua sumir por
+  // baixo do letreiro em vez de tangenciá-lo.
+  return { object: image, height, taglineTop: height * (LOGO_BAR_BOTTOM - 0.03) };
 }
 
 /**
@@ -148,7 +167,7 @@ function createWordmark(
   scene: Phaser.Scene,
   layout: Layout,
   width: number,
-): { object: Phaser.GameObjects.Container; height: number } {
+): { object: Phaser.GameObjects.Container; height: number; taglineTop: number } {
   const fontSize = px(layout, 44, 24);
   const style: Phaser.Types.GameObjects.Text.TextStyle = {
     fontFamily: BRAND_FONT,
@@ -182,7 +201,9 @@ function createWordmark(
   const scale = width / textWidth;
   container.setScale(scale);
 
-  return { object: container, height: Math.max(naturalHeight * scale, width * LOGO_RATIO * 0.5) };
+  // O provisório não tem folha sobrando embaixo: a tábua encosta quase na base.
+  const height = Math.max(naturalHeight * scale, width * LOGO_RATIO * 0.5);
+  return { object: container, height, taglineTop: height - space(layout, 4, 3) };
 }
 
 /**
@@ -246,18 +267,25 @@ function createTagline(
     // Da placa para o texto: o topo do arco vira uma fração da linha escrita, e
     // a queda é a da parábola no ponto onde a primeira letra cai.
     const toApex = PLANK_ARC.apexX - area.left;
+    const sag = height * PLANK_ARC.curvature * toApex ** 2;
     const curved = createCurvedText(scene, {
       text: tagline,
       style: textStyle,
       apex: toApex / inner,
-      sag: height * PLANK_ARC.curvature * toApex ** 2,
+      sag,
     });
     // A folga vertical é medida contra a altura de uma letra, não contra a caixa
     // inteira: o que a curva acrescenta à caixa acompanha a madeira, que desce
-    // junto. A escala vale para as duas coisas — letra e curva encolhem iguais.
-    curved.container.setScale(
-      Math.min(1, innerWidth / curved.width, innerHeight / curved.lineHeight),
-    );
+    // junto.
+    const scale = Math.min(1, innerWidth / curved.width, innerHeight / curved.lineHeight);
+    // Quando a frase precisa encolher para caber — no menu, onde a tábua é
+    // limitada pela largura do letreiro —, a escala encolheria a curva junto. A
+    // madeira, essa, não encolheu: a queda é dividida pela escala para a linha
+    // continuar assentada nela.
+    if (scale < 1) {
+      curved.setSag(sag / scale);
+    }
+    curved.container.setScale(scale);
     curved.container.setPosition(width / 2, height * PLANK_FACE.centerY);
     engrave(curved.container, dp(layout, 2));
 
