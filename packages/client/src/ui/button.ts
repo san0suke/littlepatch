@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { FONT_STACK } from '../config/theme.js';
 import { MIN_TOUCH_SIZE, dp, px, space, type Layout } from './layout.js';
 
 export type ButtonVariant = 'primary' | 'ghost' | 'disabled';
@@ -63,7 +64,12 @@ export function createButton(
   const strokeWidth = dp(layout, 2);
 
   const text = scene.add
-    .text(0, 0, label, { fontSize: `${fontSize}px`, color: palette.text, fontStyle: 'bold' })
+    .text(0, 0, label, {
+      fontFamily: FONT_STACK,
+      fontSize: `${fontSize}px`,
+      color: palette.text,
+      fontStyle: 'bold',
+    })
     .setOrigin(0.5);
 
   const width = Math.max(minWidth, Math.round(text.width + paddingX * 2));

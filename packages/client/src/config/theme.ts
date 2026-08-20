@@ -21,6 +21,19 @@ export const COLORS = {
   night: 0x2b3a5a,
 } as const;
 
+/**
+ * A fonte do canvas.
+ *
+ * O padrão do Phaser é `Courier`, um monoespaçado — as telas de formulário são
+ * DOM e usam a fonte do sistema (`index.html`), então sem isto o jogo trocava de
+ * fonte a cada tela. Fica aqui pelo mesmo motivo das cores: um lugar só, os dois
+ * lados combinando.
+ */
+export const FONT_STACK = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+/** A da logo, mais arredondada. Mesma do `.brand` no `index.html`. */
+export const BRAND_FONT = '"Trebuchet MS", "Segoe UI", system-ui, sans-serif';
+
 export const CSS_COLORS = {
   cream: '#fdf6e3',
   ink: '#2f3b2c',

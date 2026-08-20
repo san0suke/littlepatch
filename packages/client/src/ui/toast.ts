@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { dp, px, space, type Layout } from './layout.js';
+import { FONT_STACK } from '../config/theme.js';
 
 /**
  * Aviso curto que aparece no alto e some sozinho.
@@ -20,6 +21,7 @@ export function showToast(
 
   const text = scene.add
     .text(0, 0, message, {
+      fontFamily: FONT_STACK,
       fontSize: `${px(layout, 15, 12)}px`,
       color: tone === 'error' ? '#ffe9e6' : '#2f3b2c',
       align: 'center',

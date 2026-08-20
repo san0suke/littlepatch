@@ -23,10 +23,11 @@ export class LoginScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Já entrou numa visita anterior: vai direto para o bicho. Quem ainda não
-    // tem um cai no `RoomScene`, que manda para o `HatchScene`.
+    // Já entrou numa visita anterior: vai direto para o menu, sem passar por
+    // aqui. O `BootScene` faz a mesma checagem; esta cobre a volta pelo "sair da
+    // conta", que descarta a sessão e recomeça nesta tela.
     if (getToken()) {
-      this.scene.start('RoomScene');
+      this.scene.start('MenuScene');
       return;
     }
 
@@ -68,7 +69,7 @@ export class LoginScene extends Phaser.Scene {
   private formHtml(): string {
     return `
       <div class="screen">
-        <h1 class="brand">Little<span>Patch</span></h1>
+        <img class="brand" src="assets/ui/logo.webp" alt="Little Patch" />
         <form id="auth-form" class="card">
           <div class="mode-switch" role="group" aria-label="Entrar ou criar conta">
             <button type="button" class="mode-btn" data-mode="login" aria-pressed="true">Entrar</button>
@@ -143,7 +144,7 @@ export class LoginScene extends Phaser.Scene {
             ? await register({ username, email, password })
             : await login({ username, password });
         saveSession(result.token, result.user);
-        this.scene.start('RoomScene');
+        this.scene.start('MenuScene');
       } catch (error) {
         errorText.textContent = error instanceof Error ? error.message : 'Falha na autenticação';
         setError(true);

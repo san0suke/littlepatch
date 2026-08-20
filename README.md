@@ -62,7 +62,9 @@ npm run prisma:migrate -w @patch/server -- --name init
 npm run dev     # sobe server (:3000) e client (:5173) juntos
 ```
 
-Abra <http://localhost:5173>, crie uma conta e choque o ovo.
+Abra <http://localhost:5173>, crie uma conta e choque o ovo. A abertura é a tela
+de carregamento; depois do login vem o menu, e é dele que se entra no bicho e no
+jardim.
 Para ver o jardim funcionando, abra uma segunda aba anônima com outra conta.
 
 ### Jogando de outros aparelhos (celular, tablet, outro PC)
@@ -108,9 +110,11 @@ que faz o bicho viver com o jogo fechado, sem um processo cuidando de cada conta
 
 ## Arte
 
-A arte ainda não entrou. O jogo desenha uma versão provisória em formas enquanto
-uma imagem não existe, e trocar depois é colocar o arquivo na pasta e acrescentar
-uma linha em `packages/client/src/config/assets.ts`.
+Entraram o letreiro e o cenário das telas de entrada
+(`packages/client/public/assets/ui/`). O resto — bichos, quarto, ícones — ainda
+não: o jogo desenha uma versão provisória em formas enquanto uma imagem não
+existe, e trocar depois é colocar o arquivo na pasta e acrescentar uma linha em
+`packages/client/src/config/assets.ts`.
 
 Os nomes de arquivo esperados e as recomendações de tamanho estão em
 [`packages/client/public/assets/README.md`](packages/client/public/assets/README.md).

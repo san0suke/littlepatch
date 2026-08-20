@@ -21,6 +21,18 @@ export interface ImageAsset {
   url: string;
 }
 
+/** O letreiro do jogo. Usado pelo carregamento e pelo menu (`ui/brand.ts`). */
+export const LOGO_TEXTURE = 'ui-logo';
+
+/** A fazendinha pintada, fundo da tela de carregamento (`ui/backdrop.ts`). */
+export const BACKDROP_TEXTURE = 'ui-backdrop';
+
+/** O quintal com os bichos, fundo do menu. Cenário diferente, mesmo lugar. */
+export const MENU_BACKDROP_TEXTURE = 'ui-menu-backdrop';
+
+/** A tábua onde a frase do jogo é escrita, embaixo do letreiro. */
+export const PLANK_TEXTURE = 'ui-plank';
+
 /** Chave da textura de um bicho, por espécie e estágio de vida. */
 export function petTextureKey(species: PetSpeciesId, stage: PetStage): string {
   return `pet-${species}-${stage}`;
@@ -51,14 +63,21 @@ export function expectedPetImages(): ImageAsset[] {
 /**
  * O que o `BootScene` carrega de verdade.
  *
- * Vazio por enquanto: a arte ainda não chegou. Cada tela desenha o provisório e
- * segue.
+ * Por enquanto só o letreiro: o resto da arte ainda não chegou e cada tela
+ * desenha o provisório. As linhas comentadas são o que vem em seguida.
+ *
+ * `.webp` e não `.png`: o mesmo letreiro pesa 120 KB em vez de 630 KB, e ele é a
+ * primeira coisa que o celular baixa. Chrome, Firefox, Android e Safari 14+ leem
+ * — o que inclui tudo que roda o jogo, aqui e dentro do Capacitor.
  */
 export const IMAGE_ASSETS: ImageAsset[] = [
+  { key: LOGO_TEXTURE, url: 'assets/ui/logo.webp' },
+  { key: BACKDROP_TEXTURE, url: 'assets/ui/backdrop.webp' },
+  { key: MENU_BACKDROP_TEXTURE, url: 'assets/ui/menu-backdrop.webp' },
+  { key: PLANK_TEXTURE, url: 'assets/ui/plank.webp' },
   // ...expectedPetImages(),
   // { key: 'room-day', url: 'assets/room/day.png' },
   // { key: 'room-night', url: 'assets/room/night.png' },
-  // { key: 'button-wood', url: 'assets/ui/button-wood.png' },
 ];
 
 /** A textura existe e pode ser desenhada? Toda tela pergunta antes de usar. */

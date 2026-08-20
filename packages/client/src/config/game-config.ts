@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene.js';
 import { LoginScene } from '../scenes/LoginScene.js';
+import { MenuScene } from '../scenes/MenuScene.js';
 import { HatchScene } from '../scenes/HatchScene.js';
 import { RoomScene } from '../scenes/RoomScene.js';
 import { GardenScene } from '../scenes/GardenScene.js';
@@ -50,6 +51,6 @@ export function createGameConfig(): Phaser.Types.Core.GameConfig {
       height: Math.round(height * ratio),
       zoom: 1 / ratio,
     },
-    scene: [BootScene, LoginScene, HatchScene, RoomScene, GardenScene],
+    scene: [BootScene, LoginScene, MenuScene, HatchScene, RoomScene, GardenScene],
   };
 }

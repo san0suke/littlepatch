@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { createButton } from './button.js';
 import { dp, px, space, type Layout } from './layout.js';
+import { FONT_STACK } from '../config/theme.js';
 
 export interface ModalMessageConfig {
   title: string;
@@ -31,6 +32,7 @@ export function createModalMessage(
 
   const title = scene.add
     .text(0, 0, config.title, {
+      fontFamily: FONT_STACK,
       fontSize: `${px(layout, 24, 17)}px`,
       fontStyle: 'bold',
       color: '#4a3728',
@@ -42,6 +44,7 @@ export function createModalMessage(
   const detail = config.detail
     ? scene.add
         .text(0, 0, config.detail, {
+          fontFamily: FONT_STACK,
           fontSize: `${px(layout, 15, 12)}px`,
           color: '#5c6b57',
           align: 'center',

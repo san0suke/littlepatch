@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { STAT_LABELS, type StatKey } from '@patch/shared';
-import { COLORS, meterColor } from '../config/theme.js';
+import { COLORS, FONT_STACK, meterColor } from '../config/theme.js';
 import { dp, px, space, type Layout } from './layout.js';
 
 /**
@@ -30,13 +30,18 @@ export function createMeter(
   const radius = barHeight / 2;
 
   const label = scene.add.text(0, 0, STAT_LABELS[key], {
+    fontFamily: FONT_STACK,
     fontSize: `${labelSize}px`,
     color: '#2f3b2c',
     fontStyle: 'bold',
   });
 
   const value = scene.add
-    .text(width, 0, '0', { fontSize: `${labelSize}px`, color: '#5c6b57' })
+    .text(width, 0, '0', {
+      fontFamily: FONT_STACK,
+      fontSize: `${labelSize}px`,
+      color: '#5c6b57',
+    })
     .setOrigin(1, 0);
 
   const bar = scene.add.graphics();

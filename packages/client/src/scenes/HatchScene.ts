@@ -46,7 +46,7 @@ export class HatchScene extends Phaser.Scene {
 
     return `
       <div class="screen">
-        <h1 class="brand">Little<span>Patch</span></h1>
+        <img class="brand" src="assets/ui/logo.webp" alt="Little Patch" />
         <form id="hatch-form" class="card">
           <p class="card-title">Escolha o ovo</p>
           <div class="species-list">${options}</div>

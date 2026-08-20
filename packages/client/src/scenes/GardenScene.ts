@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { PET_SPECIES, stageDefinition, type GardenPetSummary } from '@patch/shared';
-import { COLORS } from '../config/theme.js';
+import { COLORS, FONT_STACK } from '../config/theme.js';
 import { getSocket } from '../services/socket-client.js';
 import { createButton } from '../ui/button.js';
 import { dp, px, readLayout, space, type Layout } from '../ui/layout.js';
@@ -21,9 +21,15 @@ import { showToast } from '../ui/toast.js';
 export class GardenScene extends Phaser.Scene {
   private layout!: Layout;
   private pets: GardenPetSummary[] = [];
+  /** Para onde o "Voltar" leva: dá para chegar aqui pelo quarto ou pelo menu. */
+  private returnTo = 'RoomScene';
 
   constructor() {
     super('GardenScene');
+  }
+
+  init(data?: { from?: string }): void {
+    this.returnTo = data?.from ?? 'RoomScene';
   }
 
   create(): void {
@@ -71,6 +77,7 @@ export class GardenScene extends Phaser.Scene {
     background.fillRect(0, l.height * 0.82, l.width, l.height * 0.18);
 
     const title = this.add.text(l.padX, l.padTop, 'Jardim', {
+      fontFamily: FONT_STACK,
       fontSize: `${px(l, 24, 18)}px`,
       color: '#2f3b2c',
       fontStyle: 'bold',
@@ -84,7 +91,7 @@ export class GardenScene extends Phaser.Scene {
       fontSize: 14,
       anchorX: 1,
       anchorY: 1,
-      onClick: () => this.scene.start('RoomScene'),
+      onClick: () => this.scene.start(this.returnTo),
     });
 
     const listTop = title.y + title.height + space(l, 10, 8);
@@ -93,6 +100,7 @@ export class GardenScene extends Phaser.Scene {
     if (this.pets.length === 0) {
       this.add
         .text(l.width / 2, (listTop + listBottom) / 2, 'Ninguém por aqui ainda.\nVolte mais tarde.', {
+          fontFamily: FONT_STACK,
           fontSize: `${px(l, 16, 13)}px`,
           color: '#4a3728',
           align: 'center',
@@ -144,6 +152,7 @@ export class GardenScene extends Phaser.Scene {
     const textWidth = width - (textLeft - l.padX) - buttonWidth - space(l, 20, 14);
 
     const name = this.add.text(textLeft, y + height * 0.22, pet.name, {
+      fontFamily: FONT_STACK,
       fontSize: `${px(l, 16, 13)}px`,
       color: '#2f3b2c',
       fontStyle: 'bold',
@@ -154,7 +163,7 @@ export class GardenScene extends Phaser.Scene {
       textLeft,
       y + height * 0.55,
       `${stageDefinition(pet.stage).name} · ${pet.ownerName}${pet.online ? ' · online' : ''}`,
-      { fontSize: `${px(l, 12, 10)}px`, color: '#5c6b57' },
+      { fontFamily: FONT_STACK, fontSize: `${px(l, 12, 10)}px`, color: '#5c6b57' },
     );
     fitText(subtitle, textWidth);
 

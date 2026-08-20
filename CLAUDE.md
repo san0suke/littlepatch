@@ -108,6 +108,33 @@ da própria página (`services/backend-url.ts`), então "localhost" não vaza pa
 celular, onde ele seria o próprio aparelho. Com `CORS_ORIGIN` vazio, o servidor
 libera loopback, faixas privadas e Tailscale (`config/cors.ts`).
 
+### O caminho até o bicho
+
+`BootScene` (carregamento) → `LoginScene` → `MenuScene` → `RoomScene` /
+`GardenScene`. O menu existe porque o jogo passou a ter mais de um lugar: cair
+direto no bicho escondia o resto. Quem já tem sessão pula o login — a checagem de
+token está nos dois, porque também se chega ao login pelo "sair da conta", que é
+uma ação do menu.
+
+O `GardenScene` recebe de onde veio (`scene.start('GardenScene', { from })`), senão
+o "Voltar" mandaria para o quarto quem entrou pelo menu.
+
+O menu lista também o que ainda não foi feito, marcado com "Em breve" e ainda
+tocável: um item que não responde a toque parece tela travada, e esconder o que
+falta faria o menu mentir sobre o tamanho do jogo.
+
+### A tela de carregamento não é só enfeite
+
+Ela carrega a arte (`IMAGE_ASSETS`) e se redesenha a cada arquivo que chega — o
+letreiro e o cenário que ela mostra são justamente o que ela está baixando, então
+sem isso a abertura inteira ficaria na versão de reserva.
+
+A barra mostra o progresso real do carregador, mas nunca termina antes de
+`MIN_SPLASH_MS`: com poucos arquivos o carregamento acaba no primeiro quadro, e
+uma tela que aparece e some no mesmo piscar é pior do que não existir. O desenho
+é atualizado no evento do carregador, e não no `update()` — este só começa a
+rodar depois do `create()`, ou seja, depois que tudo já carregou.
+
 ### Cliente: layout sem resolução fixa
 
 Não existe design de 1280x720. O canvas tem o tamanho da área visível
@@ -133,10 +160,48 @@ de toque com no mínimo 44px de CSS.
 
 ## Arte
 
-**Ainda não chegou.** O jogo é jogável sem ela: `ui/pet-sprite.ts` desenha o bicho
-em formas quando a textura não existe, e é o único arquivo que sabe da diferença.
-`config/assets.ts` é o manifesto — acrescentar uma imagem é colocar o arquivo em
+**Chegou a das telas de entrada.** O letreiro (`ui/logo.webp`), a tábua da frase
+(`ui/plank.webp`) e as duas pinturas de fundo — a estrada no carregamento
+(`ui/backdrop.webp`) e o quintal no menu (`ui/menu-backdrop.webp`) — já estão em
+`public/assets/`, listadas em `config/assets.ts`. Bichos, quarto e ícones ainda
+não.
+
+A tábua é medida a partir do texto, e não o contrário: a frase é sempre a mesma,
+mas o corpo da letra muda com a densidade e o tamanho do aparelho. **A frase é
+sempre uma linha só** — quando a tábua bate no limite (a largura da tela, ou 1,15
+vez o letreiro, para a legenda não ficar maior que a marca), quem cede é o corpo
+da letra. Quebrar em duas linhas descolaria o texto do arco, que é de uma linha.
+
+A madeira é arqueada, então a frase também é (`ui/curved-text.ts`): cada letra é
+um objeto posicionado sobre a mesma parábola da tábua e girado pela tangente.
+Reta, ela subia nas pontas e parecia flutuar fora da placa. O custo é um objeto
+de texto por letra — aceitável porque a linha é montada uma vez por desenho da
+tela, nunca a cada quadro.
+
+A frase é alinhada pelo **ponto mais alto do arco**, que é por onde passa o meio
+da madeira (`PLANK_FACE`); alinhar pela caixa do texto a deixaria baixa, porque a
+curva só empurra para baixo. E parece entalhada, não pintada: a letra escura é o
+fundo do sulco e a sombra clara logo abaixo é a luz batendo na borda do corte.
+
+Os números da curva (`PLANK_ARC`), da face (`PLANK_FACE`) e da área escrita
+(`PLANK_TEXT_AREA`) saem de medir a imagem, não de tentativa e erro — e estão em
+coordenadas do texto, que é só a faixa central da placa.
+
+`.webp` e não `.png`: o letreiro pesa 120 KB em vez de 630 KB, e cada fundo 255 a
+360 KB em vez de 2,3 MB — e é a primeira coisa que o celular baixa. Safari 14+,
+Chrome, Firefox e Android leem, o que cobre tudo que roda o jogo, aqui e dentro
+do Capacitor. Os originais em PNG ficam fora do repositório; o README de
+`public/assets/` explica como refazer a conversão.
+
+O jogo continua jogável sem o resto: `ui/pet-sprite.ts` desenha o bicho em formas
+quando a textura não existe, `ui/backdrop.ts` faz o mesmo com o cenário e
+`ui/brand.ts` com o letreiro — cada um é o único arquivo que sabe da diferença.
+`config/assets.ts` é o manifesto: acrescentar uma imagem é colocar o arquivo em
 `public/assets/` e escrever uma linha lá.
+
+A fonte do canvas é uma só (`config/theme.ts`, `FONT_STACK`): o padrão do Phaser é
+`Courier`, e sem apontar a fonte em cada estilo o jogo trocava de letra entre as
+telas de canvas e as de DOM.
 
 `expectedPetImages()` já monta a lista de nomes esperados
 (`pet/<espécie>-<estágio>.png`), mas está fora de `IMAGE_ASSETS` de propósito:
@@ -149,6 +214,7 @@ Nomes, tamanhos recomendados e o caso de spritesheet estão em
 
 Funciona ponta a ponta:
 
+- tela de carregamento e menu inicial, com o letreiro e o cenário pintados;
 - conta (cadastro/login), sessão guardada, socket autenticado;
 - chocar um ovo escolhendo espécie e nome;
 - cinco medidores caindo em tempo real, com o bicho vivendo offline;
@@ -158,7 +224,9 @@ Funciona ponta a ponta:
 - jardim com os bichos dos outros jogadores e o mimo entre eles;
 - moedas ganhas e gastas, sincronizadas em todas as abas abertas.
 
-Ainda não existe: som, loja, itens, mais de um bicho por conta, ranking, e a arte.
+Ainda não existe: som, loja, itens, missões, configurações, mais de um bicho por
+conta, ranking, e o resto da arte. O que está no menu marcado como "Em breve" é
+essa lista.
 
 ### Se voltar a dar "Cannot find module '@patch/shared'"
 

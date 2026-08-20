@@ -12,10 +12,10 @@ import {
   type StageChangedPayload,
   type StatKey,
 } from '@patch/shared';
-import { COLORS } from '../config/theme.js';
-import { clearSession, getUser } from '../services/auth-storage.js';
+import { COLORS, FONT_STACK } from '../config/theme.js';
+import { getUser } from '../services/auth-storage.js';
 import { petStore } from '../services/pet-store.js';
-import { disconnectSocket, getSocket } from '../services/socket-client.js';
+import { getSocket } from '../services/socket-client.js';
 import { createButton } from '../ui/button.js';
 import { dp, px, readLayout, space, type Layout } from '../ui/layout.js';
 import { createMeter, type Meter } from '../ui/meter.js';
@@ -139,18 +139,21 @@ export class RoomScene extends Phaser.Scene {
 
     // ── Cabeçalho: nome, estágio, idade e moedas ──────────────────────────
     const name = this.add.text(padX, padTop, pet.name, {
+      fontFamily: FONT_STACK,
       fontSize: `${px(l, 26, 18)}px`,
       color: '#2f3b2c',
       fontStyle: 'bold',
     });
 
     this.ageText = this.add.text(padX, name.y + name.height + space(l, 2, 2), '', {
+      fontFamily: FONT_STACK,
       fontSize: `${px(l, 13, 11)}px`,
       color: '#5c6b57',
     });
 
     this.coinsText = this.add
       .text(width - padX, padTop, '', {
+        fontFamily: FONT_STACK,
         fontSize: `${px(l, 18, 14)}px`,
         color: '#4a3728',
         fontStyle: 'bold',
@@ -185,6 +188,7 @@ export class RoomScene extends Phaser.Scene {
 
     this.moodText = this.add
       .text(width / 2, freeBottom, '', {
+        fontFamily: FONT_STACK,
         fontSize: `${px(l, 15, 12)}px`,
         color: '#4a3728',
         align: 'center',
@@ -280,7 +284,7 @@ export class RoomScene extends Phaser.Scene {
     return top;
   }
 
-  /** Jardim e sair. Devolve o topo da linha. */
+  /** Jardim e volta ao menu — que é de onde se sai da conta. Devolve o topo. */
   private buildExits(padBottom: number): { top: number } {
     const l = this.layout;
     const y = l.height - padBottom;
@@ -296,14 +300,14 @@ export class RoomScene extends Phaser.Scene {
     });
 
     createButton(this, {
-      label: 'Sair',
+      label: 'Menu',
       x: l.width - l.padX,
       y,
       layout: l,
       fontSize: 14,
       anchorX: 1,
       anchorY: 1,
-      onClick: () => this.logout(),
+      onClick: () => this.scene.start('MenuScene'),
     });
 
     return { top: y - garden.height };
@@ -314,12 +318,6 @@ export class RoomScene extends Phaser.Scene {
     // vira aviso (`server:error`). Duplicar a regra na tela só daria duas versões
     // dela para divergirem.
     getSocket().emit('pet:care', { action });
-  }
-
-  private logout(): void {
-    clearSession();
-    disconnectSocket();
-    this.scene.start('LoginScene');
   }
 
   /** O que só muda quando chega estado novo do servidor. */

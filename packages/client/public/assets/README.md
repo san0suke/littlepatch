@@ -1,9 +1,11 @@
 # Assets
 
-**Estado: a arte ainda não chegou.** O jogo roda assim mesmo — cada tela desenha
-uma versão provisória em formas (`src/ui/pet-sprite.ts`) quando a imagem não
-existe. Isso é de propósito: dá para jogar, sentir o ritmo dos medidores e testar
-no celular antes de a primeira imagem entrar, e depois trocar peça por peça.
+**Estado: só as telas de entrada têm arte** (`ui/logo.webp`, `ui/plank.webp`,
+`ui/backdrop.webp` e `ui/menu-backdrop.webp`).
+O resto o jogo desenha em formas — `src/ui/pet-sprite.ts` para o bicho,
+`src/ui/backdrop.ts` para o cenário, `src/ui/brand.ts` para o letreiro. Isso é de
+propósito: dá para jogar, sentir o ritmo dos medidores e testar no celular antes
+de a arte inteira entrar, e depois trocar peça por peça.
 
 ## Como entra uma imagem
 
@@ -19,8 +21,40 @@ provisório enquanto a resposta for não.
 | ------- | -------------- | ---------- |
 | `pet/`  | Os bichos, um desenho por espécie e estágio | sim |
 | `room/` | Fundo do quarto/jardim (dia e noite) | sim |
-| `ui/`   | Botões, molduras, ícones | sim |
+| `ui/`   | Letreiro, fundo das telas de entrada, botões, molduras, ícones | sim |
 | `audio/`| Música e efeitos | **não** (ver abaixo) |
+
+## `ui/` — o que já está lá
+
+| Arquivo              | Chave              | Onde aparece |
+| -------------------- | ------------------ | ------------ |
+| `logo.webp`          | `ui-logo`          | Carregamento, menu e — por `<img>` — login e chocagem |
+| `plank.webp`         | `ui-plank`         | A tábua com a frase do jogo, embaixo do letreiro |
+| `backdrop.webp`      | `ui-backdrop`      | Fundo da tela de carregamento |
+| `menu-backdrop.webp` | `ui-menu-backdrop` | Fundo do menu inicial |
+
+A tábua é **recortada na margem transparente** antes de virar `.webp`: o código
+posiciona a frase por fração do tamanho da imagem, e margem vazia sobrando
+desloca o texto. Se a arte da placa mudar, dois conjuntos de números em
+`src/ui/brand.ts` precisam ser remedidos na imagem nova:
+
+- `PLANK_TEXT_AREA` — a área plana de madeira, sem as folhas das pontas;
+- `PLANK_ARC` — o arco da face clara, que a frase acompanha letra a letra;
+- `PLANK_FACE` — onde passa o meio da madeira no ponto mais alto do arco, e
+  quanta altura de letra cabe ali.
+
+Os dois fundos são pinturas deitadas (3:2). No celular em pé o enquadramento
+corta as laterais para cobrir a tela sem deformar a arte — quem desenhar um
+cenário novo deve deixar o que importa perto do centro.
+
+**Converta para `.webp` antes de versionar.** O letreiro sai de 630 KB para
+120 KB e o fundo de 2,3 MB para 255 KB, sem diferença visível — e são os
+primeiros arquivos que o celular baixa. Qualidade 0,86–0,92 basta; o tamanho de
+origem não precisa passar de ~1600px no maior lado (o canvas nunca desenha mais
+do que isso, nem em tela de densidade 3).
+
+O `<img>` das telas de DOM aponta para o mesmo arquivo do canvas — uma imagem só,
+dois consumidores.
 
 ## `pet/` — nomes dos arquivos
 
